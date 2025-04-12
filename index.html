@@ -24,6 +24,7 @@
             width: 100%;
             height: 100%;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             background-color: rgba(0, 0, 0, 0.5);
@@ -44,12 +45,30 @@
             padding: 10px;
             font-family: Arial, sans-serif;
         }
+        
+        #permission-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        #error {
+            color: #ff4444;
+            margin-top: 20px;
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div id="loading">
         Loading AR Experience...<br>
-        Please allow camera access
+        <div id="error"></div>
+        <button id="permission-button">Allow Camera Access</button>
     </div>
     
     <div id="instructions">
@@ -60,57 +79,82 @@
         document.addEventListener('DOMContentLoaded', function() {
             const loadingScreen = document.getElementById('loading');
             const instructions = document.getElementById('instructions');
+            const permissionButton = document.getElementById('permission-button');
+            const errorDisplay = document.getElementById('error');
             
             // Initialize AR experience
-            const start = async () => {
-                // Initialize MindAR
-                const mindarThree = new window.MINDAR.IMAGE.MindARThree({
-                    container: document.body,
-                    imageTargetSrc: 'targets.mind',
-                    uiScanning: true,
-                    uiLoading: false
-                });
-                
-                const {renderer, scene, camera} = mindarThree;
-                
-                // Create a video plane to show animation
-                const video = document.createElement('video');
-                video.src = 'animation.gif';
-                video.loop = true;
-                video.muted = true;
-                
-                const videoTexture = new THREE.VideoTexture(video);
-                const videoGeometry = new THREE.PlaneGeometry(1, 1080/1920); // Adjust ratio based on your video
-                const videoMaterial = new THREE.MeshBasicMaterial({map: videoTexture});
-                const videoMesh = new THREE.Mesh(videoGeometry, videoMaterial);
-                
-                // Create anchor
-                const anchor = mindarThree.addAnchor(0);
-                anchor.group.add(videoMesh);
-                
-                // Play video once tracking starts
-                anchor.onTargetFound = () => {
-                    video.play();
-                    instructions.style.display = 'none';
-                };
-                
-                anchor.onTargetLost = () => {
-                    video.pause();
-                    instructions.style.display = 'block';
-                };
-                
-                // Start AR
-                await mindarThree.start();
-                loadingScreen.style.display = 'none';
-                
-                // Render loop
-                renderer.setAnimationLoop(() => {
-                    renderer.render(scene, camera);
-                });
+            const startAR = async () => {
+                try {
+                    // First check camera permissions
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    // Stop the stream immediately - we just needed permission
+                    stream.getTracks().forEach(track => track.stop());
+                    
+                    // Initialize MindAR
+                    const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+                        container: document.body,
+                        imageTargetSrc: 'targets.mind',
+                        uiScanning: true,
+                        uiLoading: false
+                    });
+                    
+                    const {renderer, scene, camera} = mindarThree;
+                    
+                    // Create a video plane to show animation
+                    const video = document.createElement('video');
+                    video.src = 'animation.mp4'; // Better to use mp4 than gif
+                    video.loop = true;
+                    video.muted = true;
+                    video.playsInline = true;
+                    
+                    const videoTexture = new THREE.VideoTexture(video);
+                    const videoGeometry = new THREE.PlaneGeometry(1, 1080/1920);
+                    const videoMaterial = new THREE.MeshBasicMaterial({map: videoTexture});
+                    const videoMesh = new THREE.Mesh(videoGeometry, videoMaterial);
+                    
+                    // Create anchor
+                    const anchor = mindarThree.addAnchor(0);
+                    anchor.group.add(videoMesh);
+                    
+                    // Play video once tracking starts
+                    anchor.onTargetFound = () => {
+                        video.play().catch(e => console.error("Video play failed:", e));
+                        instructions.style.display = 'none';
+                    };
+                    
+                    anchor.onTargetLost = () => {
+                        video.pause();
+                        instructions.style.display = 'block';
+                    };
+                    
+                    // Start AR
+                    await mindarThree.start();
+                    loadingScreen.style.display = 'none';
+                    
+                    // Render loop
+                    renderer.setAnimationLoop(() => {
+                        renderer.render(scene, camera);
+                    });
+                } catch (err) {
+                    console.error("AR initialization failed:", err);
+                    errorDisplay.textContent = "Failed to access camera: " + err.message;
+                    errorDisplay.style.display = 'block';
+                    permissionButton.style.display = 'block';
+                }
             };
             
-            // Start the AR experience
-            start();
+            // Add click handler for permission button
+            permissionButton.addEventListener('click', async () => {
+                permissionButton.style.display = 'none';
+                errorDisplay.style.display = 'none';
+                await startAR();
+            });
+            
+            // Try to start automatically
+            startAR().catch(() => {
+                // If auto-start fails, show the permission button
+                permissionButton.style.display = 'block';
+            });
         });
     </script>
 </body>
