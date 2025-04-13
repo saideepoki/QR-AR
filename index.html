@@ -31,5 +31,55 @@
       ></a-video>
       </a-entity>
     </a-scene>
+
+    <script>
+        const sceneEl = document.querySelector('a-scene');
+      const videoEl = document.querySelector('#ar-video');
+
+      // Variable to track if we're currently tracking the target
+      let isTargetVisible = false;
+
+      // When target is found
+      sceneEl.addEventListener('mindar-image-target-found', () => {
+        isTargetVisible = true;
+        // Reset video to beginning and play
+        videoEl.currentTime = 0;
+        videoEl.play().catch(e => console.log("Play failed:", e));
+      });
+
+      // When target is lost
+      sceneEl.addEventListener('mindar-image-target-lost', () => {
+        isTargetVisible = false;
+        // Pause the video when target is lost
+        videoEl.pause();
+      });
+
+      // Also handle the case when video ends (if not looping)
+      videoEl.addEventListener('ended', () => {
+        // If you don't want looping but want it to restart when found again
+        if (!videoEl.loop) {
+          videoEl.pause();
+        }
+      });
+
+      // Optional: Handle re-appearance after the marker was previously seen and lost
+      // This helps with scenarios where the marker briefly disappears and reappears
+      let lastLostTime = 0;
+      const RESET_THRESHOLD = 2000; // 2 seconds
+
+      setInterval(() => {
+        const now = Date.now();
+        // If target reappears after being gone for more than the threshold
+        if (isTargetVisible && (now - lastLostTime) > RESET_THRESHOLD && lastLostTime !== 0) {
+          // Reset and restart video
+          videoEl.currentTime = 0;
+          videoEl.play().catch(e => console.log("Replay failed:", e));
+        }
+
+        if (!isTargetVisible) {
+          lastLostTime = now;
+        }
+      }, 500);
+    </script>
   </body>
 </html>
