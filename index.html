@@ -79,7 +79,38 @@
         if (!isTargetVisible) {
           lastLostTime = now;
         }
-      }, 500);
+      }, 500);document.addEventListener('DOMContentLoaded', () => {
+        const sceneEl = document.querySelector('a-scene');
+        const videoEl = document.querySelector('#ar-video');
+        
+        // Remove autoplay from video element as we'll control it manually
+        videoEl.removeAttribute('autoplay');
+        
+        // Ensure video is paused initially
+        videoEl.pause();
+        videoEl.currentTime = 0;
+
+        // When target is found
+        sceneEl.addEventListener('mindar-image-target-found', () => {
+          console.log("Target found - restarting video");
+          videoEl.currentTime = 0;
+          videoEl.play().catch(e => console.log("Play failed:", e));
+        });
+
+        // When target is lost
+        sceneEl.addEventListener('mindar-image-target-lost', () => {
+          console.log("Target lost - pausing video");
+          videoEl.pause();
+        });
+
+        // Handle video end if not looping (though your video has loop=true)
+        videoEl.addEventListener('ended', () => {
+          if (!videoEl.loop) {
+            videoEl.pause();
+            videoEl.currentTime = 0;
+          }
+        });
+      });
     </script>
   </body>
 </html>
