@@ -37,7 +37,7 @@
       const videoEl = document.querySelector('#ar-video');
 
       // When the target is found, reset the video time and play from the beginning.
-      sceneEl.addEventListener('mindar-image-target-found', () => {
+      sceneEl.addEventListener('targetFound', () => {
         // Ensure the video is paused to avoid any conflicting playback
         videoEl.pause();
         // Reset to the beginning of the video
@@ -47,8 +47,9 @@
       });
 
       // Pause the video when the target is lost.
-      sceneEl.addEventListener('mindar-image-target-lost', () => {
+      sceneEl.addEventListener('targetLost', () => {
         videoEl.pause();
+        videoEl.currentTime = 0;
       });
     </script>
   </body>
